@@ -1,11 +1,20 @@
 ﻿#NoEnv
 #SingleInstance Force
 
+; ==========================================================
+; REGISTRATION MARKS
+; ==========================================================
+
 ; Give Illustrator focus
 WinActivate, ahk_exe Illustrator.exe
 WinWaitActive, ahk_exe Illustrator.exe,, 5
 
 Sleep, 250
+
+
+; ==========================================================
+; OPEN CUTTING MASTER 4 > REGISTRATION MARKS
+; ==========================================================
 
 ; Open File menu
 SendInput !f
@@ -26,6 +35,13 @@ Sleep, 150
 SendInput {Down}
 Send {Enter}
 
+Sleep, 300
+
+
+; ==========================================================
+; REGISTRATION MARKS DIALOG
+; ==========================================================
+
 TabCount := 5
 
 Loop, %TabCount%
@@ -36,6 +52,7 @@ Loop, %TabCount%
 
 ; Select existing value
 Send ^a
+
 Sleep, 150
 
 ; Enter new X Step
@@ -46,23 +63,30 @@ Sleep, 200
 ; Accept dialog
 Send {Enter}
 
-; Finished with Registration Marks
 
-; Open File menu
-SendInput !f
+; ==========================================================
+; WAIT FOR REGISTRATION MARKS TO FINISH
+; ==========================================================
 
-Sleep, 150
+Sleep, 2000
 
-; Down 17 times
-SendInput {Down 20}
 
-Sleep, 150
+; ==========================================================
+; RUN AfterRegMarks.jsx
+; Must be in same folder as this AHK file
+; ==========================================================
 
-; Open Cutting Master 4 submenu
-SendInput {Right}
+jsxFile := A_ScriptDir . "\MT_AfterRegMarks.jsx"
 
-Sleep, 150
+; Connect to currently running Illustrator
+ai := ComObjActive("Illustrator.Application")
 
-; Down once to Registration Marks
-SendInput {Down 4}
-Send {Enter}
+; Execute AfterRegMarks.jsx
+ai.DoJavaScriptFile(jsxFile)
+
+
+; ==========================================================
+; FINISH
+; ==========================================================
+
+ExitApp

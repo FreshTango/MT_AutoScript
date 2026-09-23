@@ -1,0 +1,29 @@
+#target photoshop
+
+// Iterate through every open Photoshop document
+for (var i = 0; i < app.documents.length; i++) {
+
+    var doc = app.documents[i];
+    app.activeDocument = doc;
+
+    try {
+        // Select the entire canvas
+        doc.selection.selectAll();
+
+        // Crop document to the selection bounds
+        doc.crop(doc.selection.bounds);
+
+        // Deselect
+        doc.selection.deselect();
+
+    } catch (e) {
+        // Skip this document if there is an issue
+        try {
+            doc.selection.deselect();
+        } catch (ignore) {}
+
+        alert("Could not crop document:\n" + doc.name + "\n\n" + e.message);
+    }
+}
+
+alert("Finished cropping all open documents.");

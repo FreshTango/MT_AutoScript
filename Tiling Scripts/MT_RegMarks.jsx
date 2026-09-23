@@ -6,32 +6,41 @@ try {
     }
 
     var doc = app.activeDocument;
+
     app.executeMenuCommand("selectall");
+
     if (doc.selection.length === 0) {
         throw new Error("Please select artwork first.");
     }
 
-    // Fit artboard to selected artwork
+    // ======================================================
+    // 1. Fit artboard to selected artwork
+    // ======================================================
+
     doc.fitArtboardToSelectedArt(0);
 
     var ab = doc.artboards[0];
     var rect = ab.artboardRect; // [left, top, right, bottom]
 
     // Illustrator uses points (72 pts = 1 inch)
-    var totalIncrease = 0.75 * 72; // 54 pts
-    var halfIncrease = totalIncrease / 2; // 27 pts
+    var totalIncrease = 0.75 * 72; // 0.75 inch
+    var halfIncrease = totalIncrease / 2;
 
-    // Add equally to top and bottom
-    rect[1] += halfIncrease; // move top up
-    rect[3] -= halfIncrease; // move bottom down
+    // Add 0.75" total height
+    rect[1] += halfIncrease; // top
+    rect[3] -= halfIncrease; // bottom
 
     ab.artboardRect = rect;
+
+
+    // ======================================================
+    // 3. Run RegMarks.ahk
+    // ======================================================
 
     var scriptFolder = File($.fileName).parent;
     var exeFile = new File(scriptFolder + "/RegMarks.ahk");
 
     exeFile.execute();
-
 
 } catch (e) {
     alert("Error: " + e.message);
