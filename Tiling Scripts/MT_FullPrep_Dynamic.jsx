@@ -10,12 +10,19 @@ function main() {
     // USER INPUTS
     // ------------------------------------
 
-    var gapInches = prompt(
-        "Gap between objects (inches):",
+    var horizontalGapInches = prompt(
+        "HORIZONTAL gap between objects (inches):",
         "0.2"
     );
 
-    if (gapInches === null) return;
+    if (horizontalGapInches === null) return;
+
+    var verticalGapInches = prompt(
+        "VERTICAL gap between objects (inches):",
+        "0.2"
+    );
+
+    if (verticalGapInches === null) return;
 
     var maxTiles = prompt(
         "Maximum number of tiles:",
@@ -24,11 +31,13 @@ function main() {
 
     if (maxTiles === null) return;
 
-    gapInches = parseFloat(gapInches);
+    horizontalGapInches = parseFloat(horizontalGapInches);
+    verticalGapInches = parseFloat(verticalGapInches);
     maxTiles = parseInt(maxTiles, 10);
 
     if (
-        isNaN(gapInches) ||
+        isNaN(horizontalGapInches) ||
+        isNaN(verticalGapInches) ||
         isNaN(maxTiles)
     ) {
         alert("Invalid input.");
@@ -36,7 +45,8 @@ function main() {
     }
 
     // Convert inches to points
-    var gap = gapInches * 72;
+    var horizontalGap = horizontalGapInches * 72;
+    var verticalGap = verticalGapInches * 72;
 
     // ------------------------------------
     // VERIFY SELECTION
@@ -69,11 +79,11 @@ function main() {
     var left  = r[0];
     var right = r[2];
 
-    var usableWidth = (right - left) - (gap * 2);
+    var usableWidth = (right - left) - (horizontalGap * 2);
 
     var tilesPerRow = Math.floor(
-        (usableWidth + gap) /
-        (objW + gap)
+        (usableWidth + horizontalGap) /
+        (objW + horizontalGap)
     );
 
     if (tilesPerRow < 1) {
@@ -111,8 +121,8 @@ function main() {
     // START POSITION
     // ------------------------------------
 
-    var startX = left + gap;
-    var startY = top - gap;
+    var startX = left + horizontalGap;
+    var startY = top - verticalGap;
 
     obj.position = [startX, startY];
 
@@ -129,7 +139,7 @@ function main() {
     // ------------------------------------
 
     while (
-        (y - objH > bottom + gap) &&
+        (y - objH > bottom + verticalGap) &&
         (count < maxTiles) &&
         (rowCount < maxRows)
     ) {
@@ -138,7 +148,7 @@ function main() {
         var col = 0;
 
         while (
-            (x + objW < right - gap) &&
+            (x + objW < right - horizontalGap) &&
             (count < maxTiles)
         ) {
 
@@ -153,11 +163,13 @@ function main() {
                 count++;
             }
 
-            x += objW + gap;
+            // HORIZONTAL spacing
+            x += objW + horizontalGap;
             col++;
         }
 
-        y -= objH + gap;
+        // VERTICAL spacing
+        y -= objH + verticalGap;
         rowCount++;
     }
 
@@ -185,7 +197,9 @@ function main() {
         "Tiled " + count +
         " objects\n\n" +
         "Tiles Per Row: " + tilesPerRow +
-        "\nRows Used: " + rowCount + "",
+        "\nRows Used: " + rowCount +
+        "\n\nHorizontal Gap: " + horizontalGapInches + " in" +
+        "\nVertical Gap: " + verticalGapInches + " in"
     );
 
     // ------------------------------------
