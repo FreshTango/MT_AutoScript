@@ -129,9 +129,6 @@ function main() {
     var count = 1;
     var rowCount = 0;
 
-    var tiledItems = [];
-    tiledItems.push(obj);
-
     var y = startY;
 
     // ------------------------------------
@@ -158,8 +155,6 @@ function main() {
 
                 dup.position = [x, y];
 
-                tiledItems.push(dup);
-
                 count++;
             }
 
@@ -172,22 +167,6 @@ function main() {
         y -= objH + verticalGap;
         rowCount++;
     }
-
-    // ------------------------------------
-    // SELECT ALL TILES
-    // ------------------------------------
-
-    doc.selection = null;
-
-    for (var i = 0; i < tiledItems.length; i++) {
-        tiledItems[i].selected = true;
-    }
-
-    // ------------------------------------
-    // GROUP ALL TILES
-    // ------------------------------------
-
-    app.executeMenuCommand("group");
 
     // ------------------------------------
     // REPORT RESULTS
@@ -203,6 +182,295 @@ function main() {
     );
 
     // ------------------------------------
+    // MOVE EVERYTHING FROM LAYER 2
+    // TO LAYER 1
+    // ------------------------------------
+
+    try {
+
+        var layer1 = null;
+        var layer2 = null;
+
+        // Find Layer 1 and Layer 2
+        for (var i = 0; i < doc.layers.length; i++) {
+
+            if (doc.layers[i].name === "Layer 1") {
+                layer1 = doc.layers[i];
+            }
+
+            if (doc.layers[i].name === "Layer 2") {
+                layer2 = doc.layers[i];
+            }
+        }
+
+        // Only run if both layers exist
+        if (layer1 !== null && layer2 !== null) {
+
+            // Unlock and show both layers
+            layer1.locked = false;
+            layer1.visible = true;
+
+            layer2.locked = false;
+            layer2.visible = true;
+
+            // Move all top-level artwork from Layer 2 to Layer 1
+            while (layer2.pageItems.length > 0) {
+
+                layer2.pageItems[0].move(
+                    layer1,
+                    ElementPlacement.PLACEATEND
+                );
+            }
+
+            // Move any sublayers from Layer 2 to Layer 1
+            while (layer2.layers.length > 0) {
+
+                layer2.layers[0].move(
+                    layer1,
+                    ElementPlacement.PLACEATEND
+                );
+            }
+
+            // Remove the now-empty Layer 2
+            layer2.remove();
+
+            // Make Layer 1 active
+            doc.activeLayer = layer1;
+
+            app.redraw();
+        }
+
+    } catch (e) {
+
+        alert(
+            "Error moving Layer 2 to Layer 1:\n\n" +
+            e
+        );
+    }
+
+        // ====================================================
+    // FIND CUTLINES AND MOVE THEM TO NEW LAYER 2
+    // Cutline RGB: 237, 40, 39
+    // ====================================================
+
+    try {
+
+        // ------------------------------------
+        // FIND LAYER 1
+        // ------------------------------------
+
+        var layer1 = null;
+
+        for (var i = 0; i < doc.layers.length; i++) {
+
+            if (doc.layers[i].name === "Layer 1") {
+                layer1 = doc.layers[i];
+                break;
+            }
+        }
+
+        if (layer1 === null) {
+            throw new Error("Layer 1 was not found.");
+        }
+
+        layer1.locked = false;
+        layer1.visible = true;
+
+        // ------------------------------------
+        // CREATE NEW LAYER 2
+        // ------------------------------------
+
+        var layer2 = doc.layers.add();
+        layer2.name = "Layer 2";
+
+        layer2.locked = false;
+        layer2.visible = true;
+
+        // Move Layer 2 directly above Layer 1
+        layer2.move(
+            layer1,
+            ElementPlacement.PLACEBEFORE
+        );
+
+        // ------------------------------------
+        // CUTLINE COLOR
+        // ------------------------------------
+
+        var CUT_R = 237;
+        var CUT_G = 40;
+        var CUT_B = 39;
+
+        var cutlines = [];
+
+        // ------------------------------------
+        // CHECK IF PATH IS CUTLINE
+        // ------------------------------------
+
+        function isCutline(item) {
+
+            try {
+
+                // Must be a path
+                if (item.typename !== "PathItem") {
+                    return false;
+                }
+
+                // Must have a stroke
+                if (!item.stroked) {
+                    return false;
+                }
+
+                var color = item.strokeColor;
+
+                // Must be RGB
+                if (color.typename !== "RGBColor") {
+                    return false;
+                }
+
+                // Match RGB 237 / 40 / 39
+                if (
+                    Math.round(color.red) === CUT_R &&
+                    Math.round(color.green) === CUT_G &&
+                    Math.round(color.blue) === CUT_B
+                ) {
+                    return true;
+                }
+
+            } catch (e) {
+            }
+
+            return false;
+        }
+
+        // ------------------------------------
+        // RECURSIVELY SEARCH GROUPS
+        // ------------------------------------
+
+        function findCutlines(container) {
+
+            for (
+                var i = container.pageItems.length - 1;
+                i >= 0;
+                i--
+            ) {
+
+                var item = container.pageItems[i];
+
+                // ----------------------------
+                // NORMAL PATH
+                // ----------------------------
+
+                if (item.typename === "PathItem") {
+
+                    if (isCutline(item)) {
+                        cutlines.push(item);
+                    }
+                }
+
+                // ----------------------------
+                // GROUP
+                // ----------------------------
+
+                else if (item.typename === "GroupItem") {
+
+                    findCutlines(item);
+                }
+
+                // ----------------------------
+                // COMPOUND PATH
+                // ----------------------------
+
+                else if (
+                    item.typename === "CompoundPathItem"
+                ) {
+
+                    for (
+                        var p = 0;
+                        p < item.pathItems.length;
+                        p++
+                    ) {
+
+                        if (
+                            isCutline(
+                                item.pathItems[p]
+                            )
+                        ) {
+
+                            /*
+                                Move the whole compound path
+                                rather than breaking it apart.
+                            */
+
+                            cutlines.push(item);
+
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // ------------------------------------
+        // SEARCH LAYER 1
+        // ------------------------------------
+
+        findCutlines(layer1);
+
+        // ------------------------------------
+        // MOVE CUTLINES TO LAYER 2
+        // ------------------------------------
+
+        var movedCount = 0;
+
+        for (
+            var c = cutlines.length - 1;
+            c >= 0;
+            c--
+        ) {
+
+            try {
+
+                var cutline = cutlines[c];
+
+                cutline.locked = false;
+                cutline.hidden = false;
+
+                cutline.move(
+                    layer2,
+                    ElementPlacement.PLACEATEND
+                );
+
+                movedCount++;
+
+            } catch (moveError) {
+            }
+        }
+
+        // ------------------------------------
+        // MAKE LAYER 2 ACTIVE
+        // ------------------------------------
+
+        doc.activeLayer = layer2;
+
+        app.redraw();
+
+        // ------------------------------------
+        // REPORT
+        // ------------------------------------
+
+        alert(
+            "Cutlines moved to Layer 2: " +
+            movedCount
+        );
+
+    } catch (e) {
+
+        alert(
+            "Error moving cutlines to Layer 2:\n\n" +
+            e
+        );
+    }
+        // ------------------------------------
     // REGISTRATION MARKS
     // ------------------------------------
 
