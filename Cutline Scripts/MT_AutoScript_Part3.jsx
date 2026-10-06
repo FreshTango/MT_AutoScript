@@ -18,7 +18,7 @@
 // 8. Create/find Layer 2
 // 9. Move BOX trace to Layer 2
 // 10. Ungroup first group in Layer 1
-// 11. Find first Path OR Compound Path below Spot1
+// 11. Find target Path/Compound Path below Spot1, or top path if Spot1 is absent
 // 12. Find ALL direct Layer 1 Path / Compound Path objects
 //     with the same appearance as that seed
 //     (equivalent to Select Similar Objects -> All)
@@ -665,17 +665,20 @@ for (
             null;
 
 
+        // Always get Layer 1 items.
+        // If Spot1 exists, use the first direct Path/Compound Path below it.
+        // If Spot1 does NOT exist, use the first/top direct Path/Compound Path
+        // in Layer 1 as the seed.
+        var layer1Items =
+            layer1.pageItems;
+
+
         if (
             spot1Item !== null
         ) {
 
-            var layer1Items =
-                layer1.pageItems;
-
-
             var spotIndex =
                 -1;
-
 
 
             // =================================================
@@ -703,7 +706,6 @@ for (
 
                 } catch (e) {}
             }
-
 
 
             // =================================================
@@ -740,8 +742,47 @@ for (
                     } catch (e) {}
                 }
             }
-        }
 
+        } else {
+
+            // =================================================
+            // NO Spot1 FALLBACK
+            //
+            // Expected structure:
+            // Layer 1
+            //     <Path / Compound Path>  <-- USE THIS
+            //     <Image>
+            //     <Path / Compound Path>
+            //
+            // Use the first/top DIRECT Path or Compound Path.
+            // =================================================
+
+            for (
+                var ni = 0;
+                ni < layer1Items.length;
+                ni++
+            ) {
+
+                var noSpotCandidate =
+                    layer1Items[ni];
+
+
+                try {
+
+                    if (
+                        noSpotCandidate.parent === layer1 &&
+                        isPathLike(noSpotCandidate)
+                    ) {
+
+                        seedItem =
+                            noSpotCandidate;
+
+                        break;
+                    }
+
+                } catch (e) {}
+            }
+        }
 
 
         // ====================================================
