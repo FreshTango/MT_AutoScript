@@ -1015,6 +1015,100 @@ for (
         redraw();
 
 
+        // ====================================================
+        // AUTO-CENTER MOVED CUTLINE(S) OVER Layer 1 ARTWORK
+        //
+        // Uses the main RasterItem / PlacedItem on Layer 1 as
+        // the artwork reference. The cutline is TRANSLATED only
+        // (no scaling, rotation, or shape changes).
+        // ====================================================
+
+        var artworkReference =
+            findMainArtwork(layer1);
+
+
+        if (
+            artworkReference !== null &&
+            similarItems.length > 0
+        ) {
+
+            try {
+
+                var artworkBounds =
+                    artworkReference.geometricBounds;
+
+                var artworkCenterX =
+                    (artworkBounds[0] + artworkBounds[2]) / 2;
+
+                var artworkCenterY =
+                    (artworkBounds[1] + artworkBounds[3]) / 2;
+
+
+                for (
+                    var centerI = 0;
+                    centerI < similarItems.length;
+                    centerI++
+                ) {
+
+                    var cutlineItem =
+                        similarItems[centerI];
+
+                    try {
+
+                        // Only center items that were actually
+                        // moved onto Layer 2.
+                        if (
+                            cutlineItem.layer !== targetLayer
+                        ) {
+                            continue;
+                        }
+
+                        var cutlineBounds =
+                            cutlineItem.geometricBounds;
+
+                        var cutlineCenterX =
+                            (cutlineBounds[0] + cutlineBounds[2]) / 2;
+
+                        var cutlineCenterY =
+                            (cutlineBounds[1] + cutlineBounds[3]) / 2;
+
+                        var moveX =
+                            artworkCenterX - cutlineCenterX;
+
+                        var moveY =
+                            artworkCenterY - cutlineCenterY;
+
+                        cutlineItem.translate(
+                            moveX,
+                            moveY
+                        );
+
+                    } catch (centerItemError) {
+
+                        $.writeln(
+                            "Could not center cutline in " +
+                            doc.name +
+                            ": " +
+                            centerItemError
+                        );
+                    }
+                }
+
+            } catch (centerError) {
+
+                $.writeln(
+                    "Auto-center failed in " +
+                    doc.name +
+                    ": " +
+                    centerError
+                );
+            }
+        }
+
+
+        redraw();
+
+
 
         // ====================================================
         // FINAL Spot1 STATE = UNLOCKED
@@ -1334,6 +1428,78 @@ function formatPath(
             e
         );
     }
+}
+
+
+
+// ------------------------------------------------------------
+// FIND MAIN ARTWORK ON Layer 1
+//
+// Prefers a direct RasterItem or PlacedItem. If none is direct,
+// searches descendants. This gives the cutline a stable artwork
+// center without using Spot1 or the cutline itself.
+// ------------------------------------------------------------
+
+function findMainArtwork(layer) {
+
+    try {
+
+        // Prefer direct image artwork first.
+        for (
+            var i = 0;
+            i < layer.pageItems.length;
+            i++
+        ) {
+
+            var item =
+                layer.pageItems[i];
+
+            try {
+
+                if (
+                    item.parent === layer &&
+                    (
+                        item.typename === "RasterItem" ||
+                        item.typename === "PlacedItem"
+                    )
+                ) {
+
+                    return item;
+                }
+
+            } catch (e) {}
+        }
+
+
+        // Illustrator's pageItems collection can also expose
+        // descendants, so use the first image found anywhere
+        // inside Layer 1 as a fallback.
+        for (
+            var j = 0;
+            j < layer.pageItems.length;
+            j++
+        ) {
+
+            var nestedItem =
+                layer.pageItems[j];
+
+            try {
+
+                if (
+                    nestedItem.typename === "RasterItem" ||
+                    nestedItem.typename === "PlacedItem"
+                ) {
+
+                    return nestedItem;
+                }
+
+            } catch (e) {}
+        }
+
+    } catch (e) {}
+
+
+    return null;
 }
 
 

@@ -8,30 +8,14 @@ try {
     var scriptFolder = File($.fileName).parent;
 
 
-    // -------------------------------------------------
-    // ASK IF THIS IS A PSD
-    // -------------------------------------------------
-
-    var isPSD = confirm(
-        "Are these documents PSD files?"
+    $.evalFile(
+        File(
+            scriptFolder +
+            "/MT_AutoScript_Embed.jsx"
+        )
     );
 
-
-    // -------------------------------------------------
-    // PSD SCRIPT
-    // -------------------------------------------------
-
-    if (isPSD) {
-
-        $.evalFile(
-            File(
-                scriptFolder +
-                "/MT_AutoScript_Embed.jsx"
-            )
-        );
-
-        redraw();
-    }
+    redraw();
 
 
     // -------------------------------------------------
