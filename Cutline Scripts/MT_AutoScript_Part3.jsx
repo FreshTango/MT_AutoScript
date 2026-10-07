@@ -1018,9 +1018,13 @@ for (
         // ====================================================
         // AUTO-CENTER MOVED CUTLINE(S) OVER Layer 1 ARTWORK
         //
-        // Uses the main RasterItem / PlacedItem on Layer 1 as
-        // the artwork reference. The cutline is TRANSLATED only
-        // (no scaling, rotation, or shape changes).
+        // PRECISION VERSION OF THE WORKING METHOD:
+        // - Keeps the same bounding-center method that already works.
+        // - Treats all moved cutline pieces as ONE cutline assembly.
+        // - Moves every piece by the exact same X/Y amount.
+        // - Performs a second correction pass after Illustrator updates
+        //   the bounds, removing tiny residual positioning error.
+        // - No scaling, rotation, tracing, centroid, or shape changes.
         // ====================================================
 
         var artworkReference =
@@ -1034,6 +1038,10 @@ for (
 
             try {
 
+                // --------------------------------------------
+                // Artwork center — same proven reference method
+                // --------------------------------------------
+
                 var artworkBounds =
                     artworkReference.geometricBounds;
 
@@ -1044,27 +1052,47 @@ for (
                     (artworkBounds[1] + artworkBounds[3]) / 2;
 
 
+                // --------------------------------------------
+                // Collect only cutline items actually on Layer 2
+                // --------------------------------------------
+
+                var centerItems = [];
+
                 for (
                     var centerI = 0;
                     centerI < similarItems.length;
                     centerI++
                 ) {
 
-                    var cutlineItem =
-                        similarItems[centerI];
-
                     try {
 
-                        // Only center items that were actually
-                        // moved onto Layer 2.
                         if (
-                            cutlineItem.layer !== targetLayer
+                            similarItems[centerI].layer === targetLayer
                         ) {
-                            continue;
+
+                            centerItems.push(
+                                similarItems[centerI]
+                            );
                         }
 
-                        var cutlineBounds =
-                            cutlineItem.geometricBounds;
+                    } catch (e) {}
+                }
+
+
+                if (
+                    centerItems.length > 0
+                ) {
+
+                    // ----------------------------------------
+                    // PASS 1 — exact combined-bounds alignment
+                    // ----------------------------------------
+
+                    var cutlineBounds =
+                        getCombinedGeometricBounds(centerItems);
+
+                    if (
+                        cutlineBounds !== null
+                    ) {
 
                         var cutlineCenterX =
                             (cutlineBounds[0] + cutlineBounds[2]) / 2;
@@ -1078,19 +1106,57 @@ for (
                         var moveY =
                             artworkCenterY - cutlineCenterY;
 
-                        cutlineItem.translate(
+
+                        translateItemsTogether(
+                            centerItems,
                             moveX,
                             moveY
                         );
 
-                    } catch (centerItemError) {
+                        redraw();
 
-                        $.writeln(
-                            "Could not center cutline in " +
-                            doc.name +
-                            ": " +
-                            centerItemError
-                        );
+
+                        // ------------------------------------
+                        // PASS 2 — measure again AFTER Illustrator
+                        // updates the objects, then remove any tiny
+                        // residual offset caused by internal rounding.
+                        // ------------------------------------
+
+                        var correctedBounds =
+                            getCombinedGeometricBounds(centerItems);
+
+                        if (
+                            correctedBounds !== null
+                        ) {
+
+                            var correctedCenterX =
+                                (correctedBounds[0] + correctedBounds[2]) / 2;
+
+                            var correctedCenterY =
+                                (correctedBounds[1] + correctedBounds[3]) / 2;
+
+                            var correctionX =
+                                artworkCenterX - correctedCenterX;
+
+                            var correctionY =
+                                artworkCenterY - correctedCenterY;
+
+
+                            // Ignore only effectively-zero floating noise.
+                            if (
+                                Math.abs(correctionX) > 0.000001 ||
+                                Math.abs(correctionY) > 0.000001
+                            ) {
+
+                                translateItemsTogether(
+                                    centerItems,
+                                    correctionX,
+                                    correctionY
+                                );
+
+                                redraw();
+                            }
+                        }
                     }
                 }
 
@@ -1500,6 +1566,126 @@ function findMainArtwork(layer) {
 
 
     return null;
+}
+
+
+
+// ------------------------------------------------------------
+// COMBINED GEOMETRIC BOUNDS FOR MULTIPLE CUTLINE ITEMS
+//
+// Returns [left, top, right, bottom].
+// This lets multiple cutline pieces behave as one assembly.
+// ------------------------------------------------------------
+
+function getCombinedGeometricBounds(items) {
+
+    if (
+        items === null ||
+        items.length === 0
+    ) {
+
+        return null;
+    }
+
+
+    var left = null;
+    var top = null;
+    var right = null;
+    var bottom = null;
+
+
+    for (
+        var i = 0;
+        i < items.length;
+        i++
+    ) {
+
+        try {
+
+            var b =
+                items[i].geometricBounds;
+
+            if (
+                left === null ||
+                b[0] < left
+            ) {
+                left = b[0];
+            }
+
+            if (
+                top === null ||
+                b[1] > top
+            ) {
+                top = b[1];
+            }
+
+            if (
+                right === null ||
+                b[2] > right
+            ) {
+                right = b[2];
+            }
+
+            if (
+                bottom === null ||
+                b[3] < bottom
+            ) {
+                bottom = b[3];
+            }
+
+        } catch (e) {}
+    }
+
+
+    if (
+        left === null
+    ) {
+
+        return null;
+    }
+
+
+    return [
+        left,
+        top,
+        right,
+        bottom
+    ];
+}
+
+
+
+// ------------------------------------------------------------
+// TRANSLATE CUTLINE ITEMS AS ONE ASSEMBLY
+// ------------------------------------------------------------
+
+function translateItemsTogether(
+    items,
+    moveX,
+    moveY
+) {
+
+    for (
+        var i = 0;
+        i < items.length;
+        i++
+    ) {
+
+        try {
+
+            items[i].translate(
+                moveX,
+                moveY
+            );
+
+        } catch (e) {
+
+            $.writeln(
+                "Could not precision-center cutline item: " +
+                e
+            );
+        }
+    }
 }
 
 
